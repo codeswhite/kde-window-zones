@@ -52,7 +52,8 @@ PlasmaCore.Dialog {
             alwaysShowLayoutName: KWin.readConfig("alwaysShowLayoutName", false), // always show layout name, or only when switching between them
             pollingRate: KWin.readConfig("pollingRate", 100), // polling rate in milliseconds
             zoneTarget: KWin.readConfig("zoneTarget", 0), // the part of the zone you need to hover over to highlight it
-            targetMethod: KWin.readConfig("targetMethod", 0), // method to determine in which zone the window is located
+            zoneMatchOrigin: KWin.readConfig("zoneMatchOrigin", 0), // geometric position origin when determining in which zone the window is located
+            zoneMatchMethod: KWin.readConfig("zoneMatchMethod", 0), // method to determine in which zone the window is located
             handleUnitPercent: KWin.readConfig("handleUnitPercent", true), // method to determine in which zone the window is located
             handleUnitPixels: KWin.readConfig("handleUnitPixels", false), // method to determine in which zone the window is located (unused)
             handleSize: KWin.readConfig("handleSize", 100), // set the size of the handle, only applicable when target method is Titlebar or Window
@@ -104,70 +105,67 @@ PlasmaCore.Dialog {
         clientArea = workspace.clientArea(KWin.FullScreenArea, workspace.activeScreen, workspace.currentDesktop)
     }
 
-    function checkZone(x, y, width = 1, height = 1) {
-        let arr = []
-        for (let i = 0; i < repeater_zones.model.length; i++) {
-            let zone
-            switch (config.zoneTarget) {
+    function getZoneGeometry(zone_idx) {
+        let zone
+        switch (config.zoneTarget) {
             case 0:
-                zone = repeater_zones.itemAt(i).children[0]
+                zone = repeater_zones.itemAt(zone_idx).children[0]
                 break
             case 1:
-                zone = repeater_zones.itemAt(i)
+                zone = repeater_zones.itemAt(zone_idx)
                 break
+        }
+        const zoneItem = zone.mapToItem(null, 0, 0)
+        return {
+            "x": zoneItem.x,
+            "y": zoneItem.y,
+            "width": zone.width,
+            "height": zone.height
+        }
+    }
+
+    function checkZone(x, y, width = 1, height = 1) {
+        let closest = {'distance': 999999, 'zone': -1}
+        let most_overlapping = {'area': 0, 'zone': -1}
+        const inputRect = {
+            "x": x,
+            "y": y,
+            "width": width,
+            "height": height
+        }
+
+        for (let idx = 0; idx < repeater_zones.model.length; idx++) {
+            const zoneGeo = getZoneGeometry(idx)
+            const overlap = rectOverlapArea(zoneGeo, inputRect)
+            if (overlap === 0) {
+                continue
             }
-            let zoneItem = zone.mapToItem(null, 0, 0)
-            let component = {
-                "x": zoneItem.x,
-                "y": zoneItem.y,
-                "width": zone.width,
-                "height": zone.height
+
+            if (overlap > most_overlapping.area) {
+                most_overlapping = { 'area': overlap, 'zone': idx }
             }
-            let component2 = {
-                "x": x,
-                "y": y,
-                "width": width,
-                "height": height
-            }
-            if (rectOverlapArea(component, component2) > 0) {
-                let xDist = Math.abs((component.x + component.width / 2) - (component2.x + component2.width / 2))
-                let yDist = Math.abs((component.y + component.height / 2) - (component2.y + component2.height / 2))
-                let distance = xDist + yDist
-                arr.push({i, distance})
+            const xDist = Math.abs((x + width / 2) - (zoneGeo.x + zoneGeo.width / 2))
+            const yDist = Math.abs((y + height / 2) - (zoneGeo.y + zoneGeo.height / 2))
+            const distance = xDist + yDist
+            if (distance < closest.distance) {
+                closest = { 'distance': distance, 'zone': idx }
             }
         }
-        //get lowest distance
-        let distances = arr.map(x => x.distance)
-        if (distances.length > 0) {
-            let minDistance = Math.min(...distances)
-            return arr[distances.indexOf(minDistance)].i
+
+        console.log("KZone: [zone check] closest: ", JSON.stringify(closest))
+        console.log("KZone: [zone check] most_overlapping: ", JSON.stringify(most_overlapping))
+        switch (config.zoneMatchMethod) {
+            default:
+            case 0: // Closest distance
+                return closest.zone
+            case 1: // Most area overlap
+                return most_overlapping.zone
         }
         return -1
     }
 
     function checkZoneByGeometry(geometry) {
         return checkZone(geometry.x, geometry.y, geometry.width, geometry.height)
-    }
-
-    function matchZone(client) {
-        client.zone = -1
-        // get all zones in the current layout
-        let zones = config.layouts[currentLayout].zones
-        // loop through zones and compare with the geometries of the client
-        for (let i = 0; i < zones.length; i++) {
-            let zone = zones[i]
-            let zone_padding = config.layouts[currentLayout].padding || 0
-            let zoneX = clientArea.x + ((zone.x / 100) * (clientArea.width - zone_padding)) + zone_padding
-            let zoneY = clientArea.y + ((zone.y / 100) * (clientArea.height - zone_padding)) + zone_padding
-            let zoneWidth = ((zone.width / 100) * (clientArea.width - zone_padding)) - zone_padding
-            let zoneHeight = ((zone.height / 100) * (clientArea.height - zone_padding)) - zone_padding
-            if (client.geometry.x == zoneX && client.geometry.y == zoneY && client.geometry.width == zoneWidth && client.geometry.height == zoneHeight) {
-                // zone found, set it and exit the loop
-                client.zone = i
-                client.zone = currentLayout
-                break
-            }
-        }
     }
 
     function getWindowsInZone(zone) {
@@ -332,9 +330,9 @@ PlasmaCore.Dialog {
 
         mainDialog.loadConfig()
 
-        // match all clients to zones
+        // set all windows to be without a zone
         for (var i = 0; i < workspace.clientList().length; i++) {
-            matchZone(workspace.clientList()[i])
+            workspace.clientList()[i].zone = -1
         }
 
         //get session type
@@ -366,10 +364,13 @@ PlasmaCore.Dialog {
             repeat: true
 
             onTriggered: {
-                switch (config.targetMethod) {
+                switch (config.zoneMatchOrigin) {
                 case 0: // titlebar
-                case 1: // window
-                    highlightedZone = checkZoneByGeometry(handle)
+                    const clientGeo = workspace.activeClient.geometry
+                    highlightedZone = checkZone(clientGeo.x, clientGeo.y, clientGeo.width, 1)
+                    break;
+                case 1: // window (center of window)
+                    highlightedZone = checkZoneByGeometry(workspace.activeClient.geometry)
                     break
                 case 2: // cursor
                     let pos = mouseSource.getPosition()
@@ -510,7 +511,7 @@ PlasmaCore.Dialog {
                     let titlebarHeight = workspace.activeClient.rect.height - workspace.activeClient.clientSize.height
                     return titlebarHeight > 0 ? titlebarHeight : 32
                 }
-                else if (config.targetMethod == 1) {
+                else if (config.zoneMatchOrigin == 1) {
                     return (config.handleUnitPercent) ? workspace.activeClient.height * (config.handleSize / 100) : config.handleSize
                 } else {
                     return 32
@@ -520,7 +521,7 @@ PlasmaCore.Dialog {
                 if (config.targetMethod == 0) {
                     return workspace.activeClient.geometry.x + (workspace.activeClient.geometry.width / 2) - (handle.width / 2)
                 }
-                else if (config.targetMethod == 1) {
+                else if (config.zoneMatchOrigin == 1) {
                     let centerpadding_width = (config.handleUnitPercent) ? workspace.activeClient.width * (config.handleSize / 100) : config.handleSize
                     return ((workspace.activeClient.x + workspace.activeClient.width / 2)) - centerpadding_width / 2
                 } else {
@@ -531,7 +532,7 @@ PlasmaCore.Dialog {
                 if (config.targetMethod == 0) {
                     return workspace.activeClient.geometry.y
                 }
-                else if (config.targetMethod == 1) {
+                else if (config.zoneMatchOrigin == 1) {
                     let centerpadding_height = (config.handleUnitPercent) ? workspace.activeClient.height * (config.handleSize / 100) : config.handleSize
                     return ((workspace.activeClient.y + workspace.activeClient.height / 2)) - centerpadding_height / 2
                 } else {
@@ -714,9 +715,8 @@ PlasmaCore.Dialog {
             target: workspace
 
             function onClientAdded(client) {
-                // check if new window spawns in a zone
-                if (client.zone == undefined || client.zone == -1) {
-                    matchZone(client)
+                if (client.normalWindow) {
+                    client.zone = -1
                 }
             }
 
