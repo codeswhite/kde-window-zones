@@ -403,16 +403,10 @@ PlasmaCore.Dialog {
                 if (moving) {
                     switch (sourceName) {
                         case modifierKeys[config.modifierKey]:
-                            if (keystateSource.data[sourceName].Pressed && moving) {
-                                console.log("KZones: Modifier key pressed")
-                                if (config.invertedMode) show()
-                                else hide()
-                            }
-                            if (!keystateSource.data[sourceName].Pressed && moving) {
-                                console.log("KZones: Modifier key released")
-                                if (config.invertedMode) hide()
-                                else show()
-                            }
+                            const pressed = keystateSource.data[sourceName].Pressed
+                            console.log("KZones: Modifier key ", pressed ? 'Pressed' : 'Released')
+                            if (pressed === config.invertedMode) show()
+                            else hide()
                             break
                         case "Left Button":
                         case "Right Button":
