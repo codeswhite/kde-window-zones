@@ -75,29 +75,33 @@ PlasmaCore.Dialog {
         console.log("KZones: Config loaded: " + JSON.stringify(config))
     }
 
-    function show() {
+    function toggleOsd(isShow) {
+        if (!isShow) {   
+            // Hide OSD
+            mainDialog.opacity = 0
+            mainDialog.shown = false
+            mainDialog.outputOnly = true
+            mainItem.width = 0
+            mainItem.height = 0
+            return
+        }
+
+        // show OSD
         if (!config.alwaysShowLayoutName) layoutOsd.visible = false
+
         // refresh client area
         refreshClientArea()
+
         // update main item size (needed for boot time, and to reset after hiding)
         mainItem.width = workspace.displayWidth
         mainItem.height = workspace.displayHeight
-        // show OSD
+
         if (!mainDialog.shown) {
             mainDialog.outputOnly = false
             mainDialog.opacity = 1
             mainDialog.shown = true
             highlightedZone = -1
-        }        
-    }
-
-    function hide() {
-        // hide OSD
-        mainDialog.opacity = 0
-        mainDialog.shown = false
-        mainDialog.outputOnly = true
-        mainItem.width = 0
-        mainItem.height = 0
+        }
     }
 
     function refreshClientArea() {
@@ -152,8 +156,8 @@ PlasmaCore.Dialog {
             }
         }
 
-        console.log("KZone: [zone check] closest: ", JSON.stringify(closest))
-        console.log("KZone: [zone check] most_overlapping: ", JSON.stringify(most_overlapping))
+        // console.log("KZone: [zone check] closest: ", JSON.stringify(closest))
+        // console.log("KZone: [zone check] most_overlapping: ", JSON.stringify(most_overlapping))
         switch (config.zoneMatchMethod) {
             default:
             case 0: // Closest distance
@@ -201,10 +205,10 @@ PlasmaCore.Dialog {
         return xOverlap * yOverlap
     }
 
-    function moveClientToZone(client, zone) {
+    function moveClientToZone(zone = checkZoneByGeometry(workspace.activeClient.geometry), client = workspace.activeClient) {
         // Hide when assigning to zone
         // TODO: configurable: "Checkbox: Hide OSD when assigning to zone"
-        hide()
+        toggleOsd(false)
 
         // block abnormal windows from being moved (like plasmashell, docks, etc...)
         if (!client.normalWindow) return
@@ -213,9 +217,12 @@ PlasmaCore.Dialog {
             return
         }
 
+        const zonesLength = config.layouts[currentLayout].zones.length
+        if (zone > zonesLength) return
+
         console.log("KZones: Moving client " + client.resourceClass.toString() + " to zone " + zone)
 
-        if (client.zone === -1) {
+        if (client.zone === -1 && config.rememberWindowGeometries) {
             // Save client geometry before moving to a zone
             saveWindowGeometries(client)
         }
@@ -225,7 +232,7 @@ PlasmaCore.Dialog {
         let global_x = repeater_zone.mapToGlobal(Qt.point(0, 0)).x
         let global_y = repeater_zone.mapToGlobal(Qt.point(0, 0)).y
         let newGeometry = Qt.rect(Math.round(global_x), Math.round(global_y), Math.round(repeater_zone.width), Math.round(repeater_zone.height))
-        console.log("KZones: Moving client " + client.resourceClass.toString() + " to zone " + zone + " with geometry " + JSON.stringify(newGeometry))
+        console.log("KZones: Moving client " + client.resourceClass.toString() + " to zone " + zone + " with new geometry " + JSON.stringify(newGeometry))
         client.geometry = newGeometry
         client.zone = zone
     } 
@@ -233,13 +240,11 @@ PlasmaCore.Dialog {
     function saveWindowGeometries(client) {
         console.log("KZones: Saving geometry for client " + client.resourceClass.toString())
         // save current geometry
-        if (config.rememberWindowGeometries) {
-            client.oldGeometry = {
-                "x": client.geometry.x,
-                "y": client.geometry.y,
-                "width": client.geometry.width,
-                "height": client.geometry.height
-            }
+        client.oldGeometry = {
+            "x": client.geometry.x,
+            "y": client.geometry.y,
+            "width": client.geometry.width,
+            "height": client.geometry.height
         }
     }
 
@@ -264,6 +269,7 @@ PlasmaCore.Dialog {
             // reset timer to prevent osd from being hidden when switching layouts
             if (!moving) {
                 hideOSD.running = false
+                // if (!config.keepOsdAfterLayoutSwitch) // TODO: config: "Checkbox (default false): Keep OSD open after switching layouts"
                 hideOSD.start()
             }
 
@@ -274,46 +280,42 @@ PlasmaCore.Dialog {
             resetAllClientZones()
 
             highlightedZone = -1
-            show()
+            toggleOsd(true)
             if (!config.alwaysShowLayoutName) layoutOsd.visible = true
         })
 
         // shortcut: move to zone (1-9)
-        for (let i = 0; i < 9; i++) {
-            bindShortcut(`Move active window to zone ${i+1}`, `Ctrl+Alt+Num+${i+1}`, function() {
-                moveClientToZone(workspace.activeClient, i)
+        for (let zone_idx = 0; zone_idx < 9; zone_idx++) {
+            bindShortcut(`Move active window to zone ${zone_idx+1}`, `Ctrl+Alt+Num+${zone_idx+1}`, function() {
+                moveClientToZone(zone_idx)
             })
+        }
+
+        function cycleActiveClient(isForward) {
+            const activeZone = workspace.activeClient.zone
+            if (activeZone === -1) {
+                moveClientToZone()
+                return
+            }
+            const zonesLength = config.layouts[currentLayout].zones.length
+            const nextZone = isForward 
+                ? (activeZone + 1) % zonesLength
+                : (activeZone - 1 + zonesLength) % zonesLength
+            moveClientToZone(nextZone)
         }
 
         // shortcut: move to next zone
         bindShortcut("Move active window to next zone", "Ctrl+Alt+Right", function() {
-            const client = workspace.activeClient
-            if (client.zone == -1) {
-                moveClientToZone(client, checkZoneByGeometry(client.geometry))
-                return
-            }
-            const zonesLength = config.layouts[currentLayout].zones.length
-            moveClientToZone(client, (client.zone + 1) % zonesLength)
+            cycleActiveClient(true)
         })
-
         // shortcut: move to previous zone
         bindShortcut("Move active window to previous zone", "Ctrl+Alt+Left", function() {
-            const client = workspace.activeClient
-            if (client.zone == -1) {
-                moveClientToZone(client, checkZoneByGeometry(client.geometry))
-                return
-            }
-            const zonesLength = config.layouts[currentLayout].zones.length
-            moveClientToZone(client, (client.zone - 1 + zonesLength) % zonesLength)
+            cycleActiveClient(false)
         })
 
         // shortcut: toggle osd
         bindShortcut("Toggle OSD", "Ctrl+Alt+C", function() {
-            if (!shown) {
-                show()
-            } else {
-                hide()
-            }
+            toggleOsd(!shown)
         })
 
         // shortcut: switch to next window in current zone
@@ -416,8 +418,7 @@ PlasmaCore.Dialog {
                         case modifierKeys[config.modifierKey]:
                             const pressed = keystateSource.data[sourceName].Pressed
                             console.log("KZones: Modifier key ", pressed ? 'Pressed' : 'Released')
-                            if (pressed === config.invertedMode) show()
-                            else hide()
+                            toggleOsd(pressed === config.invertedMode)
                             break
                         case "Left Button":
                         case "Right Button":
@@ -425,11 +426,7 @@ PlasmaCore.Dialog {
                             if(keystateSource.data[sourceName].Pressed) {
                                 console.log("KZones: Npmb pressed")
                                 if (config.npmbToggle) {
-                                    if (shown) {
-                                        hide()
-                                    } else {
-                                        show()
-                                    }
+                                    toggleOsd(!shown)
                                 }
                                 if (config.npmbCycle) {
                                     highlightedZone = -1
@@ -479,7 +476,7 @@ PlasmaCore.Dialog {
             anchors.fill: parent
             hoverEnabled: true
             onPressed: {
-                hide()
+                toggleOsd(false)
             }
         }
 
@@ -638,7 +635,7 @@ PlasmaCore.Dialog {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onPressed: {
-                            moveClientToZone(workspace.activeClient, zone.zoneIndex)
+                            moveClientToZone(zone.zoneIndex)
                         }
                         onEntered: {
                             highlightedZone = zone.zoneIndex
@@ -702,7 +699,7 @@ PlasmaCore.Dialog {
         // workspace connection
         Connections {
             target: workspace
-
+            
             function onClientAdded(client) {
                 if (client.normalWindow) {
                     client.zone = -1
@@ -712,7 +709,7 @@ PlasmaCore.Dialog {
             function onClientFullScreenSet(client, fullscreen, user) {
                 if (!client) return;
                 console.log("KZones: Client fullscreen: " + client.resourceClass.toString() + " (fullscreen " + fullscreen + ")");
-                mainDialog.hide();
+                toggleOsd(false)
             }
 
 
@@ -746,14 +743,14 @@ PlasmaCore.Dialog {
             function onClientStartUserMovedResized(client) {
                 if (client.resizeable && client.normalWindow) {
                     client.zone = -1
+                    console.log("KZones: Active client move/restart begin: " + client.resourceClass.toString())
                     if (client.move && checkFilter(client)) {
                         refreshClientArea()
                         moving = true
                         resizing = false
                         hideOSD.running = false
-                        console.log("KZones: Active client move start " + client.resourceClass.toString())
 
-                        if (config.rememberWindowGeometries && client.oldGeometry) {
+                        if (client.oldGeometry) {
                             console.log("KZones: Restoring old geometry")
                             client.geometry.x = client.oldGeometry.x
                             client.geometry.y = client.oldGeometry.y
@@ -780,7 +777,7 @@ PlasmaCore.Dialog {
                 if (moving) {
                     console.log("Kzones: Move end " + client.resourceClass.toString())
                     if (shown) {
-                        moveClientToZone(client, highlightedZone)
+                        moveClientToZone(highlightedZone, client)
                     }
                 }
                 if (resizing) {
@@ -814,7 +811,7 @@ PlasmaCore.Dialog {
             repeat: false
 
             onTriggered: {
-                hide()
+                toggleOsd(false)
             }
         }
 
