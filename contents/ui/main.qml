@@ -168,30 +168,17 @@ PlasmaCore.Dialog {
         return checkZone(geometry.x, geometry.y, geometry.width, geometry.height)
     }
 
-    function getWindowsInZone(zone) {
-        let windows = []
-        for (let i = 0; i < workspace.clientList().length; i++) {
-            let client = workspace.clientList()[i]
-            if (client.zone === zone && client.normalWindow) windows.push(client)
-        }
-        return windows
-    }
+    function switchWindowInZone(isReverse) {
+        // Get all clients in the active zone
+        const clientsInZone = workspace.clientList()
+            .filter(w => client.normalWindow && w.zone === workspace.activeClient.zone)
+        if (!clientsInZone.length) return;
 
-    function switchWindowInZone(zone, reverse) {
-
-        let clientsInZone = getWindowsInZone(zone)
-
-        if (reverse) { clientsInZone.reverse() }
+        if (isReverse) { clientsInZone.reverse() }
 
         // cycle through clients in zone
-        if (clientsInZone.length > 0) {
-            let index = clientsInZone.indexOf(workspace.activeClient)
-            if (index === -1) {
-                workspace.activeClient = clientsInZone[0]
-            } else {
-                workspace.activeClient = clientsInZone[(index + 1) % clientsInZone.length]
-            }
-        }
+        const index = clientsInZone.indexOf(workspace.activeClient)
+        workspace.activeClient = clientsInZone[(index + 1) % clientsInZone.length]
     }
 
     function rectOverlapArea(component1, component2) {
@@ -318,14 +305,12 @@ PlasmaCore.Dialog {
 
         // shortcut: switch to next window in current zone
         bindShortcut("Switch to next window in current zone", "Ctrl+Alt+Up", function() {
-            let zone = workspace.activeClient.zone
-            switchWindowInZone(zone)
+            switchWindowInZone(false)
         })
 
         // shortcut: switch to previous window in current zone
         bindShortcut("Switch to previous window in current zone", "Ctrl+Alt+Down", function() {
-            let zone = workspace.activeClient.zone
-            switchWindowInZone(zone, true)
+            switchWindowInZone(true)
         })
 
         mainDialog.loadConfig()
