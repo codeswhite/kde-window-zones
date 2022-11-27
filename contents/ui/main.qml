@@ -202,6 +202,9 @@ PlasmaCore.Dialog {
     }
 
     function moveClientToZone(client, zone) {
+        // Hide when assigning to zone
+        // TODO: configurable: "Checkbox: Hide OSD when assigning to zone"
+        hide()
 
         // block abnormal windows from being moved (like plasmashell, docks, etc...)
         if (!client.normalWindow) return
@@ -636,7 +639,6 @@ PlasmaCore.Dialog {
                         cursorShape: Qt.PointingHandCursor
                         onPressed: {
                             moveClientToZone(workspace.activeClient, zone.zoneIndex)
-                            hide()
                         }
                         onEntered: {
                             highlightedZone = zone.zoneIndex
@@ -780,7 +782,6 @@ PlasmaCore.Dialog {
                     if (shown) {
                         moveClientToZone(client, highlightedZone)
                     }
-                    hide()
                 }
                 if (resizing) {
                     // client resizing
