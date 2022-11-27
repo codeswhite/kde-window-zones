@@ -41,7 +41,6 @@ PlasmaCore.Dialog {
     property string color_indicator_accent: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 1)
     property string color_indicator_shadow: '#69000000'
     property string color_indicator_font: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 1)
-    property string color_debug_handle: Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.9)  
 
     function loadConfig() {
         // load values from configuration
@@ -54,9 +53,6 @@ PlasmaCore.Dialog {
             zoneTarget: KWin.readConfig("zoneTarget", 0), // the part of the zone you need to hover over to highlight it
             zoneMatchOrigin: KWin.readConfig("zoneMatchOrigin", 0), // geometric position origin when determining in which zone the window is located
             zoneMatchMethod: KWin.readConfig("zoneMatchMethod", 0), // method to determine in which zone the window is located
-            handleUnitPercent: KWin.readConfig("handleUnitPercent", true), // method to determine in which zone the window is located
-            handleUnitPixels: KWin.readConfig("handleUnitPixels", false), // method to determine in which zone the window is located (unused)
-            handleSize: KWin.readConfig("handleSize", 100), // set the size of the handle, only applicable when target method is Titlebar or Window
             enableDebugMode: KWin.readConfig("enableDebugMode", false), // enable debug mode
             filterMode: KWin.readConfig("filterMode", 0), // filter mode
             filterList: KWin.readConfig("filterList", ""), // filter list
@@ -488,54 +484,6 @@ PlasmaCore.Dialog {
             }
         }
 
-        // debug handle
-        Rectangle {
-            id: handle
-            color: color_debug_handle
-            visible: config.enableDebugMode
-            width: {
-                if (config.targetMethod == 0 || config.targetMethod == 1) {
-                    return (config.handleUnitPercent) ? workspace.activeClient.width * (config.handleSize / 100) : config.handleSize
-                }
-                else {
-                    return 32
-                }
-            }
-            height: {
-                if (config.targetMethod == 0) {
-                    let titlebarHeight = workspace.activeClient.rect.height - workspace.activeClient.clientSize.height
-                    return titlebarHeight > 0 ? titlebarHeight : 32
-                }
-                else if (config.zoneMatchOrigin == 1) {
-                    return (config.handleUnitPercent) ? workspace.activeClient.height * (config.handleSize / 100) : config.handleSize
-                } else {
-                    return 32
-                }
-            }
-            x: {
-                if (config.targetMethod == 0) {
-                    return workspace.activeClient.geometry.x + (workspace.activeClient.geometry.width / 2) - (handle.width / 2)
-                }
-                else if (config.zoneMatchOrigin == 1) {
-                    let centerpadding_width = (config.handleUnitPercent) ? workspace.activeClient.width * (config.handleSize / 100) : config.handleSize
-                    return ((workspace.activeClient.x + workspace.activeClient.width / 2)) - centerpadding_width / 2
-                } else {
-                    return mouseSource.position.x - handle.width / 2  || 0
-                }
-            }
-            y: {
-                if (config.targetMethod == 0) {
-                    return workspace.activeClient.geometry.y
-                }
-                else if (config.zoneMatchOrigin == 1) {
-                    let centerpadding_height = (config.handleUnitPercent) ? workspace.activeClient.height * (config.handleSize / 100) : config.handleSize
-                    return ((workspace.activeClient.y + workspace.activeClient.height / 2)) - centerpadding_height / 2
-                } else {
-                    return mouseSource.position.y - handle.height / 2  || 0
-                }
-            }
-        }
-
         // debug osd
         Rectangle {
             id: debugOsd
@@ -564,7 +512,6 @@ PlasmaCore.Dialog {
                         t += `Layout: ${currentLayout}\n`
                         t += `Zones: ${config.layouts[currentLayout].zones.map(z => z.name).join(', ')}\n`
                         t += `Polling Rate: ${config.pollingRate}ms\n`
-                        t += `Handle X: ${handle.x}, Y: ${handle.y}, Width: ${handle.width}, Height: ${handle.height}\n`
                         t += `Moving: ${moving}\n`
                         t += `Resizing: ${resizing}\n`
                         t += `Old Geometry: ${JSON.stringify(workspace.activeClient.oldGeometry)}\n`
