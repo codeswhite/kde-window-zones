@@ -724,8 +724,8 @@ PlasmaCore.Dialog {
                 }
             }
 
-            // is moving
-            function onClientStepUserMovedResized(client, r) {
+            // When dragging the window to another screen
+            function onScreenChanged() {
                 refreshClientArea();
             }
 
