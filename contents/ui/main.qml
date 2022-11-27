@@ -196,16 +196,16 @@ PlasmaCore.Dialog {
     }
 
     function rectOverlapArea(component1, component2) {
-        let x1 = component1.x + clientArea.x
-        let y1 = component1.y + clientArea.y
-        let x2 = component1.x + component1.width + clientArea.x
-        let y2 = component1.y + component1.height + clientArea.y
-        let x3 = component2.x + clientArea.x
-        let y3 = component2.y + clientArea.y
-        let x4 = component2.x + component2.width + clientArea.x
-        let y4 = component2.y + component2.height + clientArea.y
-        let xOverlap = Math.max(0, Math.min(x2, x4) - Math.max(x1, x3))
-        let yOverlap = Math.max(0, Math.min(y2, y4) - Math.max(y1, y3))
+        const x1 = component1.x + clientArea.x
+        const y1 = component1.y + clientArea.y
+        const x2 = component1.x + component1.width + clientArea.x
+        const y2 = component1.y + component1.height + clientArea.y
+        const x3 = component2.x + clientArea.x
+        const y3 = component2.y + clientArea.y
+        const x4 = component2.x + component2.width + clientArea.x
+        const y4 = component2.y + component2.height + clientArea.y
+        const xOverlap = Math.max(0, Math.min(x2, x4) - Math.max(x1, x3))
+        const yOverlap = Math.max(0, Math.min(y2, y4) - Math.max(y1, y3))
         return xOverlap * yOverlap
     }
 
@@ -232,10 +232,10 @@ PlasmaCore.Dialog {
         }
 
         // Set new geometry and zone
-        let repeater_zone = repeater_zones.itemAt(zone)
-        let global_x = repeater_zone.mapToGlobal(Qt.point(0, 0)).x
-        let global_y = repeater_zone.mapToGlobal(Qt.point(0, 0)).y
-        let newGeometry = Qt.rect(Math.round(global_x), Math.round(global_y), Math.round(repeater_zone.width), Math.round(repeater_zone.height))
+        const repeater_zone = repeater_zones.itemAt(zone)
+        const global_x = repeater_zone.mapToGlobal(Qt.point(0, 0)).x
+        const global_y = repeater_zone.mapToGlobal(Qt.point(0, 0)).y
+        const newGeometry = Qt.rect(Math.round(global_x), Math.round(global_y), Math.round(repeater_zone.width), Math.round(repeater_zone.height))
         console.log("KZones: Moving client " + client.resourceClass.toString() + " to zone " + zone + " with new geometry " + JSON.stringify(newGeometry))
         client.geometry = newGeometry
         client.zone = zone
@@ -375,7 +375,7 @@ PlasmaCore.Dialog {
                     highlightedZone = checkZoneByGeometry(workspace.activeClient.geometry)
                     break
                 case 2: // cursor
-                    let pos = mouseSource.getPosition()
+                    const pos = mouseSource.getPosition()
                     highlightedZone = checkZone(pos.x, pos.y)
                     break
                 default:
@@ -460,8 +460,8 @@ PlasmaCore.Dialog {
             engine: "executable"
             connectedSources: []
             onNewData: {
-                let session = cmdSessionType.data[cmdSessionType.connectedSources[0]].stdout.trim()
-                if (session == "x11") {
+                const session = cmdSessionType.data[cmdSessionType.connectedSources[0]].stdout.trim()
+                if (session === "x11") {
                     console.log("KZones: X11 session detected")
                     //when this is set in Wayland, KWin crashes 🤦
                     mouseSource.engine = "mouse"
@@ -562,9 +562,9 @@ PlasmaCore.Dialog {
                 y: clientArea.y + ((modelData.y / 100) * (clientArea.height - zone_padding)) + zone_padding
                 implicitWidth: ((modelData.width / 100) * (clientArea.width - zone_padding)) - zone_padding
                 implicitHeight: ((modelData.height / 100) * (clientArea.height - zone_padding)) - zone_padding
-                color: (highlightedZone == zoneIndex) ? color_zone_background_active : color_zone_background
+                color: (highlightedZone === zoneIndex) ? color_zone_background_active : color_zone_background
                 radius: 8 // TODO: make configurable (zoneRadius)
-                border.color: (highlightedZone == zoneIndex) ? color_zone_border_active : color_zone_border
+                border.color: (highlightedZone === zoneIndex) ? color_zone_border_active : color_zone_border
                 border.width: 3
 
                 property int zoneIndex: index
@@ -608,15 +608,17 @@ PlasmaCore.Dialog {
                         Rectangle {
                             property int padding: config.alternateIndicatorStyle ? 0 : 3
                             radius: 5
-                            visible: config.alternateIndicatorStyle ? ((index == zone.zoneIndex) ? true : false) : true
+                            visible: config.alternateIndicatorStyle ? (index === zone.zoneIndex) : true
                             x: ((modelData.x / 100) * (indicator.width - padding)) + padding
                             y: ((modelData.y / 100) * (indicator.height - padding)) + padding
-                            z: (index == zone.zoneIndex) ? 2 : 1
+                            z: (index === zone.zoneIndex) ? 2 : 1
                             implicitWidth: ((modelData.width / 100) * (indicator.width - padding)) - padding
                             implicitHeight: ((modelData.height / 100) * (indicator.height - padding)) - padding
-                            color: (index == zone.zoneIndex) ? color_indicator_accent : color_indicator
+                            color: (index === zone.zoneIndex) ? color_indicator_accent : color_indicator
                             // opacity: (highlightedZone != zone.zoneIndex) ? 1.0 : 1.0 // TODO: add opacity to config
-                            scale: (doAnimations) ? ((highlightedZone == zone.zoneIndex) ? ((index == zone.zoneIndex) ? 1.1 : 1) : 1.0) : 1
+                            scale: doAnimations && index === highlightedZone && index === zone.zoneIndex
+                                    ? 1.1
+                                    : 1
                             Behavior on scale {
                                 NumberAnimation { duration: 150 }
                             }
@@ -628,7 +630,7 @@ PlasmaCore.Dialog {
                         z: 3
                         anchors.fill: indicator
                         font.pixelSize: 20
-                        opacity: (highlightedZone != zone.zoneIndex) ? 1.0 : 0.5 // TODO: add opacity to config
+                        opacity: (highlightedZone !== zone.zoneIndex) ? 1.0 : 0.5 // TODO: add opacity to config
                         color: color_indicator_font
                         leftPadding: 30
                         rightPadding: 30
@@ -745,13 +747,13 @@ PlasmaCore.Dialog {
             // check filter
             function checkFilter(client) {
 
-                let filter = config.filterList.split(/\r?\n/)
+                const filter = config.filterList.split(/\r?\n/)
 
                 if (config.filterList.length > 0) {
-                    if (config.filterMode == 0) { // include
+                    if (config.filterMode === 0) { // include
                         return filter.includes(client.resourceClass.toString())
                     }
-                    if (config.filterMode == 1) { // exclude
+                    if (config.filterMode === 1) { // exclude
                         return !filter.includes(client.resourceClass.toString())
                     }
                 }
