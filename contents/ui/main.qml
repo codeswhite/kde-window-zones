@@ -720,9 +720,12 @@ PlasmaCore.Dialog {
                         }
                     }
                     if (client.resize) {
+                        // client resizing
                         moving = false
                         resizing = true
-                        // client resizing
+
+                        // Discard old geometry
+                        delete client.oldGeometry
                     }
                 }
             }
