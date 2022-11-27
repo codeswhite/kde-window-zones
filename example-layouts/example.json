@@ -1,0 +1,84 @@
+[
+  {
+    "name": "Screen devided to three parts",
+    "padding": 0,
+    "zones": [
+      {
+        "name": "Left",
+        "x": 0,
+        "y": 0,
+        "height": 100,
+        "width": 32
+      },
+      {
+        "name": "Left-Wide",
+        "x": 0,
+        "y": 0,
+        "height": 100,
+        "width": 68
+      },
+      {
+        "name": "Mid",
+        "x": 32,
+        "y": 0,
+        "height": 100,
+        "width": 36
+      },
+      {
+        "name": "Right-Wide",
+        "x": 32,
+        "y": 0,
+        "height": 100,
+        "width": 68
+      },
+      {
+        "name": "Right",
+        "x": 68,
+        "y": 0,
+        "height": 100,
+        "width": 32
+      }
+    ]
+  },
+  {
+    "name": "Screen devided to four parts",
+    "padding": 0,
+    "zones": [
+      {
+        "name": "Left",
+        "x": 0,
+        "y": 0,
+        "height": 100,
+        "width": 25
+      },
+      {
+        "name": "Mid-Left",
+        "x": 25,
+        "y": 0,
+        "height": 100,
+        "width": 25
+      },
+      {
+        "name": "Mid",
+        "x": 25,
+        "y": 0,
+        "height": 100,
+        "width": 50
+      },
+      {
+        "name": "Mid-Right",
+        "x": 50,
+        "y": 0,
+        "height": 100,
+        "width": 25
+      },
+      {
+        "name": "Right",
+        "x": 75,
+        "y": 0,
+        "height": 100,
+        "width": 25
+      }
+    ]
+  }
+]
