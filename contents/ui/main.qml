@@ -705,12 +705,15 @@ PlasmaCore.Dialog {
                 mainDialog.hide();
             }
 
+
+            function onClientActivated(client) {
+                if (client) {
+                    console.log("KZones: Client activated: " + client.resourceClass.toString() + " (zone " + client.zone + ")");
+                    refreshClientArea();
+                }    
+            }
+
             // unused, but may be useful in the future
-            // function onClientActivated(client) {
-            //     if (client) {
-            //         console.log("KZones: Client activated: " + client.resourceClass.toString() + " (zone " + client.zone + ")");
-            //     }    
-            // }
             // function onVirtualScreenSizeChanged(){ }
         }
 
