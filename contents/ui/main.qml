@@ -176,8 +176,8 @@ PlasmaCore.Dialog {
 
     function switchWindowInZone(isReverse) {
         // Get all clients in the active zone
-        const clientsInZone = workspace.clientList()
-            .filter(w => client.normalWindow && w.zone === workspace.activeClient.zone)
+        const clientsInZone = Object.values(workspace.clientList())
+            .filter(function(w) { return w.normalWindow && w.zone === workspace.activeClient.zone })
         if (!clientsInZone.length) return;
 
         if (isReverse) { clientsInZone.reverse() }
