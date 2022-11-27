@@ -761,7 +761,9 @@ PlasmaCore.Dialog {
             }
 
             // is moving
-            // function onClientStepUserMovedResized(client, r) { }
+            function onClientStepUserMovedResized(client, r) {
+                refreshClientArea();
+            }
 
             // stop moving
             function onClientFinishUserMovedResized(client) {
