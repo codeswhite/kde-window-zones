@@ -85,9 +85,6 @@ PlasmaCore.Dialog {
         // show OSD
         if (!config.alwaysShowLayoutName) layoutOsd.visible = false
 
-        // refresh client area
-        refreshClientArea()
-
         // update main item size (needed for boot time, and to reset after hiding)
         mainItem.width = workspace.displayWidth
         mainItem.height = workspace.displayHeight
@@ -101,8 +98,9 @@ PlasmaCore.Dialog {
     }
 
     function refreshClientArea() {
-        activeScreen = workspace.activeScreen
-        clientArea = workspace.clientArea(KWin.FullScreenArea, workspace.activeScreen, workspace.currentDesktop)
+        activeScreen = workspace.activeClient.screen
+        // TODO FIXME this method will be removed in plasma 6 (see `kwin/**/workspace_wrapper.h`)
+        clientArea = workspace.clientArea(KWin.FullScreenArea, activeScreen, workspace.currentDesktop)
     }
 
     function getZoneGeometry(zone_idx) {
@@ -655,6 +653,7 @@ PlasmaCore.Dialog {
 
         // workspace connection
         Connections {
+            // TODO: Test on Wayland, possibly target `workspace` can be buggy or something.. See KWin source code for info
             target: workspace
             
             function onClientAdded(client) {
@@ -673,8 +672,7 @@ PlasmaCore.Dialog {
             function onClientActivated(client) {
                 if (client) {
                     console.log("KZones: Client activated: " + client.resourceClass.toString() + " (zone " + client.zone + ")");
-                    refreshClientArea();
-                }    
+                }
             }
 
             // unused, but may be useful in the future
@@ -701,7 +699,12 @@ PlasmaCore.Dialog {
                 if (client.resizeable && client.normalWindow) {
                     client.zone = -1
                     console.log("KZones: Active client move/restart begin: " + client.resourceClass.toString())
-                    if (client.move && checkFilter(client)) {
+
+                    if (!checkFilter(client)) {
+                        return
+                    }
+
+                    if (client.move) {
                         refreshClientArea()
                         moving = true
                         resizing = false
@@ -746,18 +749,13 @@ PlasmaCore.Dialog {
 
             // check filter
             function checkFilter(client) {
-
-                const filter = config.filterList.split(/\r?\n/)
-
-                if (config.filterList.length > 0) {
-                    if (config.filterMode === 0) { // include
-                        return filter.includes(client.resourceClass.toString())
-                    }
-                    if (config.filterMode === 1) { // exclude
-                        return !filter.includes(client.resourceClass.toString())
-                    }
+                if (config.filterList.length === 0) {
+                    return true
                 }
-                return true
+
+                // 0 = include ; 1 = exclude
+                const filter = config.filterList.split(/\r?\n/)
+                return (config.filterMode === 0) === filter.includes(client.resourceClass.toString())
             }
         }
 
