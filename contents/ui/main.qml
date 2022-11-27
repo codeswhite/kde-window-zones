@@ -168,6 +168,12 @@ PlasmaCore.Dialog {
         return checkZone(geometry.x, geometry.y, geometry.width, geometry.height)
     }
 
+    function resetAllClientZones() {
+        for (var i = 0; i < workspace.clientList().length; i++) {
+            workspace.clientList()[i].zone = -1
+        }
+    }
+
     function switchWindowInZone(isReverse) {
         // Get all clients in the active zone
         const clientsInZone = workspace.clientList()
@@ -260,6 +266,10 @@ PlasmaCore.Dialog {
 
             //cycle through layouts
             currentLayout = (currentLayout + 1) % config.layouts.length
+
+            // Reset zones of clients
+            resetAllClientZones()
+
             highlightedZone = -1
             show()
             if (!config.alwaysShowLayoutName) layoutOsd.visible = true
@@ -316,9 +326,7 @@ PlasmaCore.Dialog {
         mainDialog.loadConfig()
 
         // set all windows to be without a zone
-        for (var i = 0; i < workspace.clientList().length; i++) {
-            workspace.clientList()[i].zone = -1
-        }
+        resetAllClientZones()
 
         //get session type
         cmdSessionType.exec()
