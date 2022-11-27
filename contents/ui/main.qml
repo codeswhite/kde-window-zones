@@ -179,9 +179,17 @@ PlasmaCore.Dialog {
     }
 
     function switchWindowInZone(isReverse) {
+        // Check active client's zone
+        const activeClientZone = workspace.activeClient.zone
+        console.log(activeClientZone)
+        if (activeClientZone === -1) {
+            // If the client is not in any zone then we should assign it to a zone
+            return moveClientToZone()
+        }
+
         // Get all clients in the active zone
         const clientsInZone = Object.values(workspace.clientList())
-            .filter(function(w) { return w.normalWindow && w.zone === workspace.activeClient.zone })
+            .filter(function(w) { return w.normalWindow && w.zone === activeClientZone })
         if (!clientsInZone.length) return;
 
         if (isReverse) { clientsInZone.reverse() }
