@@ -48,7 +48,11 @@
             <default>100</default>
         </entry>
 
-        <entry name="targetMethod" type="Int">
+        <entry name="zoneMatchOrigin" type="Int">
+            <default>0</default>
+        </entry>
+
+        <entry name="zoneMatchMethod" type="Int">
             <default>0</default>
         </entry>
 
