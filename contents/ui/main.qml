@@ -24,8 +24,7 @@ PlasmaCore.Dialog {
     property bool shown: false
     property bool moving: false
     property bool resizing: false
-    property var clientArea: {}
-    property var cachedClientArea: {}
+    property var activeScreenArea: {}
     property int currentLayout: 0
     property int highlightedZone: -1
     property int activeScreen: 0
@@ -97,10 +96,13 @@ PlasmaCore.Dialog {
         }
     }
 
-    function refreshClientArea() {
-        activeScreen = workspace.activeClient.screen
+    function refreshActiveScreenArea() {
+        const activeScreen = workspace.activeClient
+            ? workspace.activeClient.screen
+            : workspace.activeScreen
+
         // TODO FIXME this method will be removed in plasma 6 (see `kwin/**/workspace_wrapper.h`)
-        clientArea = workspace.clientArea(KWin.FullScreenArea, activeScreen, workspace.currentDesktop)
+        activeScreenArea = workspace.clientArea(KWin.FullScreenArea, activeScreen, workspace.currentDesktop)
     }
 
     function getZoneGeometry(zone_idx) {
@@ -197,14 +199,14 @@ PlasmaCore.Dialog {
     }
 
     function rectOverlapArea(component1, component2) {
-        const x1 = component1.x + clientArea.x
-        const y1 = component1.y + clientArea.y
-        const x2 = component1.x + component1.width + clientArea.x
-        const y2 = component1.y + component1.height + clientArea.y
-        const x3 = component2.x + clientArea.x
-        const y3 = component2.y + clientArea.y
-        const x4 = component2.x + component2.width + clientArea.x
-        const y4 = component2.y + component2.height + clientArea.y
+        const x1 = component1.x + activeScreenArea.x
+        const y1 = component1.y + activeScreenArea.y
+        const x2 = component1.x + component1.width + activeScreenArea.x
+        const y2 = component1.y + component1.height + activeScreenArea.y
+        const x3 = component2.x + activeScreenArea.x
+        const y3 = component2.y + activeScreenArea.y
+        const x4 = component2.x + component2.width + activeScreenArea.x
+        const y4 = component2.y + component2.height + activeScreenArea.y
         const xOverlap = Math.max(0, Math.min(x2, x4) - Math.max(x1, x3))
         const yOverlap = Math.max(0, Math.min(y2, y4) - Math.max(y1, y3))
         return xOverlap * yOverlap
@@ -266,9 +268,7 @@ PlasmaCore.Dialog {
 
         // register window
         KWin.registerWindow(mainDialog)
-
-        // refresh client area
-        refreshClientArea()        
+ 
         // shortcut: cycle through layouts
         bindShortcut("Cycle layouts", "Ctrl+Alt+D", function() {
             // reset timer to prevent osd from being hidden when switching layouts
@@ -341,12 +341,14 @@ PlasmaCore.Dialog {
         //get session type
         cmdSessionType.exec()
 
-        // delay the initialization of the overlay until the workspace is ready
-        delay.setTimeout(function() {
-            mainDialog.visible = true
-            mainDialog.opacity = 0
-            console.log("KZones: Ready!")
-        }, 1000)
+        refreshActiveScreenArea()
+
+        // // delay the initialization of the overlay until the workspace is ready
+        // delay.setTimeout(function() {
+        //     mainDialog.visible = true
+        //     mainDialog.opacity = 0
+        //     console.log("KZones: Ready!")
+        // }, 1000)
     }
 
     function bindShortcut(title, sequence, callback) {
@@ -489,8 +491,8 @@ PlasmaCore.Dialog {
         Rectangle {
             id: debugOsd
             visible: config.enableDebugMode
-            x: clientArea.x
-            y: clientArea.y
+            x: activeScreenArea.x
+            y: activeScreenArea.y
             z: 100
             width: debugOsdText.paintedWidth + debugOsdText.padding * 2
             height: debugOsdText.paintedHeight + debugOsdText.padding * 2
@@ -532,8 +534,8 @@ PlasmaCore.Dialog {
             id: layoutOsd
             visible: true
             opacity: config.layouts[currentLayout].name ? 1 : 0
-            x: clientArea.x + clientArea.width / 2 - width / 2
-            y: clientArea.y + clientArea.height - 150
+            x: activeScreenArea.x + activeScreenArea.width / 2 - width / 2
+            y: activeScreenArea.y + activeScreenArea.height - 150
             width: layoutName.paintedWidth + 30
             height: layoutName.paintedHeight + 15
             radius: 5
@@ -559,10 +561,10 @@ PlasmaCore.Dialog {
             // zone
             Rectangle {
                 id: zone
-                x: clientArea.x + ((modelData.x / 100) * (clientArea.width - zone_padding)) + zone_padding
-                y: clientArea.y + ((modelData.y / 100) * (clientArea.height - zone_padding)) + zone_padding
-                implicitWidth: ((modelData.width / 100) * (clientArea.width - zone_padding)) - zone_padding
-                implicitHeight: ((modelData.height / 100) * (clientArea.height - zone_padding)) - zone_padding
+                x: activeScreenArea.x + ((modelData.x / 100) * (activeScreenArea.width - zone_padding)) + zone_padding
+                y: activeScreenArea.y + ((modelData.y / 100) * (activeScreenArea.height - zone_padding)) + zone_padding
+                implicitWidth: ((modelData.width / 100) * (activeScreenArea.width - zone_padding)) - zone_padding
+                implicitHeight: ((modelData.height / 100) * (activeScreenArea.height - zone_padding)) - zone_padding
                 color: (highlightedZone === zoneIndex) ? color_zone_background_active : color_zone_background
                 radius: 8 // TODO: make configurable (zoneRadius)
                 border.color: (highlightedZone === zoneIndex) ? color_zone_border_active : color_zone_border
@@ -675,6 +677,7 @@ PlasmaCore.Dialog {
             function onClientActivated(client) {
                 if (client) {
                     console.log("KZones: Client activated: " + client.resourceClass.toString() + " (zone " + client.zone + ")");
+                    refreshActiveScreenArea()
                 }
             }
 
@@ -708,7 +711,6 @@ PlasmaCore.Dialog {
                     }
 
                     if (client.move) {
-                        refreshClientArea()
                         moving = true
                         resizing = false
                         hideOSD.running = false
@@ -735,7 +737,7 @@ PlasmaCore.Dialog {
 
             // When dragging the window to another screen
             function onScreenChanged() {
-                refreshClientArea();
+                refreshActiveScreenArea();
             }
 
             // stop moving
