@@ -168,7 +168,10 @@ PlasmaCore.Dialog {
 
     function resetAllClientZones() {
         for (var i = 0; i < workspace.clientList().length; i++) {
-            workspace.clientList()[i].zone = -1
+            const client = workspace.clientList()[i]
+            if (client.normalWindow) {
+                client.zone = -1
+            }
         }
     }
 
